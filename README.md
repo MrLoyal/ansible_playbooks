@@ -2,7 +2,7 @@
 
 ### A collection of repetitive jobs written into ansible playbooks by Thanh Loyal
 
-If you are like me, who usually find him self doing an installation again and again, you may (or may not) 
+If you are like me, who usually finds him self doing an installation again and again, you may (or may not) 
 find this collection useful. I have written all steps to, for e.g, installing nginx on RHEL/CentoS/RockyLinux
 and also having modsecurity module compiled into it to protect webapps.
 
