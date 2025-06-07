@@ -1,3 +1,12 @@
+# This playbook compile nginx from source code and add mod-security into it on dnf/yum based linux
+# After a successful installation, 'nginx' service will be available and can be used as usual:
+# systemctl start nginx
+# systemctl status nginx
+# nginx -t
+# An example of how to configure a site and activate mod-security is also placed in
+# /etc/nginx/conf.d/modsec-server-example.conf
+# You may then add more configuration as desired.
+
 ---
 - name: Compile nginx from source code, including mod-security
   hosts: localhost
@@ -5,58 +14,58 @@
     nginx_version: 1.27.5
 
   tasks:
-    # - name: Install dependencies
-    #   ansible.builtin.dnf:
-    #     name: "{{ item }}"
-    #     state: present
-    #   with_items:
-    #     - libmodsecurity
-    #     - libmodsecurity-devel
-    #     - pcre
-    #     - pcre-devel
-    #     - openssl
-    #     - openssl-devel
-    #     - libxml2
-    #     - libxml2-devel
-    #     - libxslt
-    #     - libxslt-devel
-    #     - gd
-    #     - gd-devel
-    #     - perl-ExtUtils-Embed
+    - name: Install dependencies
+      ansible.builtin.dnf:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - libmodsecurity
+        - libmodsecurity-devel
+        - pcre
+        - pcre-devel
+        - openssl
+        - openssl-devel
+        - libxml2
+        - libxml2-devel
+        - libxslt
+        - libxslt-devel
+        - gd
+        - gd-devel
+        - perl-ExtUtils-Embed
 
-    # - name: "Download nginx source code from: https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
-    #   ansible.builtin.get_url:
-    #     url: "https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
-    #     dest: "/tmp/nginx-{{ nginx_version }}.tar.gz"
-    #     mode: '0775'
-    # - name: Unarchive nginx source code
-    #   unarchive:
-    #     src: /tmp/nginx-{{ nginx_version }}.tar.gz
-    #     dest: /tmp
-    #     remote_src: yes
-    #     owner: root
-    #     group: root
-    #     mode: '0755'
+    - name: "Download nginx source code from: https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
+      ansible.builtin.get_url:
+        url: "https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
+        dest: "/tmp/nginx-{{ nginx_version }}.tar.gz"
+        mode: '0775'
+    - name: Unarchive nginx source code
+      unarchive:
+        src: /tmp/nginx-{{ nginx_version }}.tar.gz
+        dest: /tmp
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0755'
 
-    # - name: "Clone Modsecurity-nginx from github.com"
-    #   ansible.builtin.git:
-    #     repo: 'https://github.com/owasp-modsecurity/ModSecurity-nginx.git'
-    #     dest: /tmp/ModSecurity-nginx
+    - name: "Clone Modsecurity-nginx from github.com"
+      ansible.builtin.git:
+        repo: 'https://github.com/owasp-modsecurity/ModSecurity-nginx.git'
+        dest: /tmp/ModSecurity-nginx
         
-    # - name: "Run configure"
-    #   ansible.builtin.shell:
-    #     cmd: ./configure --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-compat --with-debug --with-file-aio --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_degradation_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_image_filter_module=dynamic --with-http_mp4_module --with-http_perl_module=dynamic --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-http_xslt_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-stream_ssl_preread_module --with-threads --with-cc-opt='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection' --with-ld-opt='-Wl,-z,relro -Wl,--as-needed -Wl,-z,now -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -Wl,-E -L/usr/lib64' --add-module=/tmp/ModSecurity-nginx
-    #     chdir: /tmp/nginx-{{ nginx_version }}
+    - name: "Run configure"
+      ansible.builtin.shell:
+        cmd: ./configure --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-compat --with-debug --with-file-aio --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_degradation_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_image_filter_module=dynamic --with-http_mp4_module --with-http_perl_module=dynamic --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-http_xslt_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-stream_ssl_preread_module --with-threads --with-cc-opt='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection' --with-ld-opt='-Wl,-z,relro -Wl,--as-needed -Wl,-z,now -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -Wl,-E -L/usr/lib64' --add-module=/tmp/ModSecurity-nginx
+        chdir: /tmp/nginx-{{ nginx_version }}
 
-    # - name: "Run make. This may take a few minutes"
-    #   ansible.builtin.shell:
-    #     cmd: make 
-    #     chdir: /tmp/nginx-{{ nginx_version }}
+    - name: "Run make. This may take a few minutes"
+      ansible.builtin.shell:
+        cmd: make 
+        chdir: /tmp/nginx-{{ nginx_version }}
 
-    # - name: "Run make install"
-    #   ansible.builtin.shell:
-    #     cmd: make install
-    #     chdir: /tmp/nginx-{{ nginx_version }}
+    - name: "Run make install"
+      ansible.builtin.shell:
+        cmd: make install
+        chdir: /tmp/nginx-{{ nginx_version }}
 
     - name: "Check user nginx"
       shell:
@@ -68,49 +77,49 @@
         cmd: useradd --system --home-dir /var/cache/nginx --shell /sbin/nologin --comment "nginx user" --user-group nginx
       when: user_nginx_stat.stdout | int == 0
 
-    # - name: "Copy file nginx.service into /usr/lib/systemd/system/nginx.service"
-    #   copy:
-    #     src: files/nginx/nginx.service
-    #     dest: /usr/lib/systemd/system/nginx.service
+    - name: "Copy file nginx.service into /usr/lib/systemd/system/nginx.service"
+      copy:
+        src: files/nginx/nginx.service
+        dest: /usr/lib/systemd/system/nginx.service
 
-    # - name: Stop service nginx, if running
-    #   ansible.builtin.systemd_service:
-    #     name: nginx
-    #     state: stopped
+    - name: Stop service nginx, if running
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: stopped
 
-    # - name: Start service nginx
-    #   ansible.builtin.systemd_service:
-    #     name: nginx
-    #     state: started
+    - name: Start service nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: started
 
-    # - name: "Clone Core rule set from github.com"
-    #   ansible.builtin.git:
-    #     repo: 'https://github.com/coreruleset/coreruleset.git'
-    #     dest: /tmp/coreruleset
+    - name: "Clone Core rule set from github.com"
+      ansible.builtin.git:
+        repo: 'https://github.com/coreruleset/coreruleset.git'
+        dest: /tmp/coreruleset
 
-    # - name: "Checkout core rule set branch v4.0/main"
-    #   ansible.builtin.shell:
-    #     cmd: 'git checkout v4.0/main'
-    #     chdir: /tmp/coreruleset
+    - name: "Checkout core rule set branch v4.0/main"
+      ansible.builtin.shell:
+        cmd: 'git checkout v4.0/main'
+        chdir: /tmp/coreruleset
 
-    # - name: "Make sure directory /etc/nginx/ModSecurity does not exist"
-    #   file:
-    #     path: /etc/nginx/ModSecurity
-    #     state: absent
+    - name: "Make sure directory /etc/nginx/ModSecurity does not exist"
+      file:
+        path: /etc/nginx/ModSecurity
+        state: absent
 
-    # - name: "Create directory /etc/nginx/ModSecurity does not exist"
-    #   file:
-    #     path: /etc/nginx/ModSecurity
-    #     state: directory
+    - name: "Create directory /etc/nginx/ModSecurity does not exist"
+      file:
+        path: /etc/nginx/ModSecurity
+        state: directory
 
-    # - name: Move core rule set to /etc/nginx/ModSecurity/owasp-modsecurity-crs
-    #   shell:
-    #     cmd: mv  /tmp/coreruleset /etc/nginx/ModSecurity/owasp-modsecurity-crs
+    - name: Move core rule set to /etc/nginx/ModSecurity/owasp-modsecurity-crs
+      shell:
+        cmd: mv  /tmp/coreruleset /etc/nginx/ModSecurity/owasp-modsecurity-crs
 
-    # - name: "Rename crs-setup.conf.example to crs-setup.conf"
-    #   shell:
-    #     cmd: "mv crs-setup.conf.example crs-setup.conf"
-    #     chdir: /etc/nginx/ModSecurity/owasp-modsecurity-crs
+    - name: "Rename crs-setup.conf.example to crs-setup.conf"
+      shell:
+        cmd: "mv crs-setup.conf.example crs-setup.conf"
+        chdir: /etc/nginx/ModSecurity/owasp-modsecurity-crs
 
     - name: Allow method PUT and DELETE in crs-setup.conf
       lineinfile:
@@ -119,25 +128,25 @@
         line: "SecAction \"id:900200, phase:1, nolog, pass, t:none,  setvar:'tx.allowed_methods=OPTIONS GET POST DELETE PUT'\""
         state: present
 
-    # - name: "Rename file REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example to REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
-    #   shell:
-    #     cmd: "mv REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"    
-    #     chdir: "/etc/nginx/ModSecurity/owasp-modsecurity-crs/rules/"
+    - name: "Rename file REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example to REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
+      shell:
+        cmd: "mv REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"    
+        chdir: "/etc/nginx/ModSecurity/owasp-modsecurity-crs/rules/"
 
-    # - name: "Rename file RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example to RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf"
-    #   shell:
-    #     cmd: "mv RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf"    
-    #     chdir: "/etc/nginx/ModSecurity/owasp-modsecurity-crs/rules/"
+    - name: "Rename file RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example to RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf"
+      shell:
+        cmd: "mv RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf"    
+        chdir: "/etc/nginx/ModSecurity/owasp-modsecurity-crs/rules/"
     
-    # - name: "Copy file modsec_includes.conf"
-    #   copy:
-    #     src: files/nginx/modsec_includes.conf
-    #     dest: /etc/nginx/ModSecurity/modsec_includes.conf
+    - name: "Copy file modsec_includes.conf"
+      copy:
+        src: files/nginx/modsec_includes.conf
+        dest: /etc/nginx/ModSecurity/modsec_includes.conf
   
-    # - name: "Clone Modsecurity from github.com"
-    #   ansible.builtin.git:
-    #     repo: 'https://github.com/owasp-modsecurity/ModSecurity.git'
-    #     dest: /tmp/ModSecurity
+    - name: "Clone Modsecurity from github.com"
+      ansible.builtin.git:
+        repo: 'https://github.com/owasp-modsecurity/ModSecurity.git'
+        dest: /tmp/ModSecurity
     
     - name: "Checkout branch v3/master"
       ansible.builtin.shell:
