@@ -1,4 +1,4 @@
-# This playbook compile nginx from source code and add mod-security into it on dnf/yum based linux
+# This playbook compiles nginx from source code and adds mod-security into it on dnf/yum based linux
 # After a successful installation, 'nginx' service will be available and can be used as usual:
 # systemctl start nginx
 # systemctl status nginx
