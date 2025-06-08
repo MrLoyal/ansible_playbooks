@@ -1,0 +1,232 @@
+# This playbook installs mosquitto MQTT broker along with sqlite3 and mosquitto-go-auth plugin
+# for authentication
+
+---
+- name: Install mosquitto MQTT broker
+  hosts: localhost
+  vars:
+    go_version: 1.24.4
+    # This default account will be created and will be able to connect and 
+    # authenticate against mosquitto broker
+    mqtt_account: my_device_1
+    # mqtt_password: will be hashed and insert into the database later
+    mqtt_password: <fill in your raw password here>
+
+  tasks:
+    - name: "Running dnf update"
+      ansible.builtin.shell:
+        cmd: "dnf update -y"
+
+    - name: Installing mosquitto package
+      ansible.builtin.dnf:
+        name: "mosquitto"
+        state: present
+
+    # There's golang 1.23 shipped with RockyLinux
+    # But mosquitto-go-auth plugin requires golang 1.24
+    # So remove old version first
+    - name: Uninstalling golang
+      ansible.builtin.dnf:
+        name: "golang"
+        state: absent
+
+    - name: Install the 'Development tools' package group
+      ansible.builtin.dnf:
+        name: '@Development tools'
+        state: present
+
+    # - name: Installing dependencies for the mosquitto-go-auth plugin
+    #   ansible.builtin.dnf:
+    #     name: "{{ item }}"
+    #     state: present
+    #   with_items:
+    #     - mosquitto-devel
+    #     - libuv
+    #     - libwebsockets
+    #     - c-ares
+    #     - c-ares-devel
+    #     - openssl
+    #     - openssl-devel
+
+
+    # - name: "Installing libwebsockets-devel"
+    #   ansible.builtin.shell:
+    #     cmd: "dnf install -y libwebsockets-devel --skip-broken"
+
+    # - name: "Downloading GO from: https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    #   ansible.builtin.get_url:
+    #     url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    #     dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    #     mode: '0775'
+
+    # - name: Unarchive GO binary
+    #   unarchive:
+    #     src: /tmp/go{{ go_version }}.linux-amd64.tar.gz
+    #     dest: /tmp
+    #     remote_src: yes
+    #     owner: root
+    #     group: root
+    #     mode: '0755'
+
+    # - name: "Make sure /usr/local/bin/go_{{ go_version}} does not exist"
+    #   file:
+    #     path: "/usr/local/bin/go_{{ go_version}}"
+    #     state: absent
+
+    # - name: "Move GO binary into /usr/local/bin"
+    #   shell:
+    #     cmd: "mv /tmp/go /usr/local/bin/go_{{ go_version}}"
+
+    # - name: "Make sure /usr/local/bin/go does not exit"
+    #   file:
+    #     path: "/usr/local/bin/go"
+    #     state: absent
+
+    # - name: "Make sure /usr/local/bin/gofmt does not exit"
+    #   file:
+    #     path: "/usr/local/bin/gofmt"
+    #     state: absent
+
+    # - name: "Create symbolic links"
+    #   shell:
+    #     cmd: "ln -s go_{{ go_version}}/bin/{{ item }} {{ item }}"
+    #     chdir: /usr/local/bin
+    #   with_items:
+    #     - go
+    #     - gofmt
+
+    # - name: "Inquerying Golang version"
+    #   ansible.builtin.shell:
+    #     cmd: "go version"
+    #   register: go_version
+
+    # - name: "Print GO version"
+    #   ansible.builtin.debug:
+    #     msg: "{{ go_version.stdout }}"    
+
+
+    # - name: "Cloning mosquitto-go-auth from github.com"
+    #   ansible.builtin.git:
+    #     repo: 'https://github.com/iegomez/mosquitto-go-auth.git'
+    #     dest: /tmp/mosquitto-go-auth
+
+    # - name: "Running make to build the mosquitto-go-auth plugin"
+    #   ansible.builtin.shell:
+    #     cmd: "make"
+    #     chdir: /tmp/mosquitto-go-auth
+
+
+    - name: "Creating directory /etc/mosquitto/conf.d/"
+      file:
+        path: /etc/mosquitto/conf.d/
+        state: directory
+
+    - name: 'Copying go-auth.so into /etc/mosquitto/conf.d/'
+      copy:
+        src: /tmp/mosquitto-go-auth/go-auth.so
+        dest: /etc/mosquitto/conf.d/go-auth.so
+        remote_src: true
+
+    - name: "Checking for mosquitto configuration backup"
+      stat:
+        path: /etc/mosquitto/mosquitto.conf.original
+      register: mos_conf_backup
+
+    - name: "Backing up mosquitto configuration"
+      shell:
+        cmd: "mv mosquitto.conf mosquitto.conf.original"
+        chdir: /etc/mosquitto/
+      when: "not mos_conf_backup.stat.exists"
+
+    - name: "Copying mosquitto configuration file"
+      copy:
+        src: "files/mosquitto/mosquitto.conf"
+        dest: "/etc/mosquitto/mosquitto.conf"
+
+    - name: "Installing sqlite"
+      dnf:
+        name: sqlite
+        state: present
+        
+    - name: "Checking if database file exists"
+      stat:
+        path: /home/mosquitto/db/mosquitto_auth.db
+      register: db_file
+
+    - name: "Debug database file stat"
+      debug:
+        msg: "Database file '/home/mosquitto/db/mosquitto_auth.db' {{ 'exists' if db_file.stat.exists else 'does not exist'}}"    
+
+    - name: "Create directory /home/mosquitto/db"
+      file:
+        path: /home/mosquitto/db
+        state: directory
+
+    - name: "Changing owner of directory /home/mosquitto"
+      shell: 
+        cmd: "chown -R mosquitto:mosquitto /home/mosquitto"
+
+    - name: "Create sqlite3 database and tables"
+      shell: |
+        sqlite3 /home/mosquitto/db/mosquitto_auth.db << 'EOF'
+        CREATE TABLE account (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username VARCHAR(40) UNIQUE,
+          pass VARCHAR(100)
+        );
+        EOF
+      when: "not db_file.stat.exists"
+
+    - name: "Installing httpd-tools for hashed passwords generation"
+      dnf:
+        name: httpd-tools
+        state: present
+    
+    - name: "Generating BCrypt hash of mqtt password"
+      shell:
+        cmd: "htpasswd -bnBC 10 '' {{ mqtt_password }}"
+      register: hashed_password
+      when: "not db_file.stat.exists"
+
+    - name: "Debug"
+      debug:
+        msg: "{{ hashed_password.stdout }}"
+      when: "not db_file.stat.exists"
+
+    - name: "Insert account into the database"
+      shell: |
+        sqlite3 /home/mosquitto/db/mosquitto_auth.db << 'EOF'
+        insert into account (username, pass) values ('{{ mqtt_account }}', '{{ hashed_password.stdout }}');
+        EOF
+      when: "not db_file.stat.exists"
+
+    - name: Check existing iptables rules for MQTT
+      shell: iptables -L INPUT -n | grep -q ":1883"
+      register: iptables_mqtt_check
+      failed_when: false
+      changed_when: false
+
+    - name: Display iptables MQTT rule status
+      debug:
+        msg: "MQTT rule exists: {{ iptables_mqtt_check.rc == 0 }}"
+
+    - name: Allow MQTT connections on port 1883
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: '1883'
+        jump: ACCEPT
+        comment: "Allow MQTT connections"
+      when: iptables_mqtt_check.rc != 0
+      #become: yes
+      #notify: save iptables
+
+    - name: Stoping Mosquitto service    
+      ansible.builtin.systemd_service:
+        name: mosquitto
+        state: stopped     
+
+    - name: Starting Mosquitto service    
+      ansible.builtin.systemd_service:
+        name: mosquitto
+        state: started     
